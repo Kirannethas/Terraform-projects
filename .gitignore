@@ -9,3 +9,24 @@ desktop.ini
 
 # Logs
 *.log
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.zip
+venv/
+.env
+
+# Sensitive
+*.key
+*.pem
+secrets.txt
