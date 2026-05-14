@@ -1,0 +1,154 @@
+trigger:
+  - main
+
+pr:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  terraformVersion: '1.5.0'
+  azureSubscription: 'YOUR_AZURE_SERVICE_CONNECTION'  # Update this
+  resourceGroupLocation: 'East US'
+
+stages:
+  - stage: Validate
+    displayName: 'Validate & Plan Terraform'
+    jobs:
+      - job: ValidateProject1
+        displayName: 'Validate Project 1 - Portfolio WebApp'
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init - Project 1'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+              backendServiceArm: $(azureSubscription)
+              backendAzureRmResourceGroupName: 'terraform-state'
+              backendAzureRmStorageAccountName: 'tfstate'
+              backendAzureRmContainerName: 'state'
+              backendAzureRmKey: 'project1.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Validate - Project 1'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Plan - Project 1'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+              commandOptions: '-out=$(Build.ArtifactStagingDirectory)/project1.tfplan'
+              environmentServiceNameAzureRM: $(azureSubscription)
+
+      - job: ValidateProject2
+        displayName: 'Validate Project 2 - Function App'
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init - Project 2'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+              backendServiceArm: $(azureSubscription)
+              backendAzureRmResourceGroupName: 'terraform-state'
+              backendAzureRmStorageAccountName: 'tfstate'
+              backendAzureRmContainerName: 'state'
+              backendAzureRmKey: 'project2.tfstate'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Validate - Project 2'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Plan - Project 2'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+              commandOptions: '-out=$(Build.ArtifactStagingDirectory)/project2.tfplan'
+              environmentServiceNameAzureRM: $(azureSubscription)
+
+  - stage: Deploy
+    displayName: 'Deploy Infrastructure'
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+    dependsOn: Validate
+    jobs:
+      - deployment: DeployProject1
+        displayName: 'Deploy Project 1'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: TerraformInstaller@0
+                  inputs:
+                    terraformVersion: $(terraformVersion)
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Terraform Init - Project 1'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'init'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+                    backendServiceArm: $(azureSubscription)
+                    backendAzureRmResourceGroupName: 'terraform-state'
+                    backendAzureRmStorageAccountName: 'tfstate'
+                    backendAzureRmContainerName: 'state'
+                    backendAzureRmKey: 'project1.tfstate'
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Terraform Apply - Project 1'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'apply'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+                    environmentServiceNameAzureRM: $(azureSubscription)
+
+      - deployment: DeployProject2
+        displayName: 'Deploy Project 2'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: TerraformInstaller@0
+                  inputs:
+                    terraformVersion: $(terraformVersion)
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Terraform Init - Project 2'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'init'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+                    backendServiceArm: $(azureSubscription)
+                    backendAzureRmResourceGroupName: 'terraform-state'
+                    backendAzureRmStorageAccountName: 'tfstate'
+                    backendAzureRmContainerName: 'state'
+                    backendAzureRmKey: 'project2.tfstate'
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Terraform Apply - Project 2'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'apply'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+                    environmentServiceNameAzureRM: $(azureSubscription)

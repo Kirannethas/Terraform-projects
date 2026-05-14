@@ -1,0 +1,132 @@
+trigger:
+  - main
+
+pr:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  terraformVersion: '1.5.0'
+  azureSubscription: 'YOUR_AZURE_SERVICE_CONNECTION'  # Update this
+
+stages:
+  # VALIDATE STAGE - Runs on all PRs and pushes
+  - stage: Validate
+    displayName: 'Validate Terraform Code'
+    jobs:
+      - job: ValidateAll
+        displayName: 'Validate & Plan'
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          # Project 1 Validation
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init - Project 1'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+              environmentServiceNameAzureRM: $(azureSubscription)
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Format Check - Project 1'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Plan - Project 1'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+              environmentServiceNameAzureRM: $(azureSubscription)
+
+          # Project 2 Validation
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init - Project 2'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+              environmentServiceNameAzureRM: $(azureSubscription)
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Validate - Project 2'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Plan - Project 2'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+              environmentServiceNameAzureRM: $(azureSubscription)
+
+  # DEPLOY STAGE - Only runs on main branch
+  - stage: Deploy
+    displayName: 'Deploy to Azure'
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    dependsOn: Validate
+    jobs:
+      - deployment: ApplyProject1
+        displayName: 'Deploy Project 1 - Portfolio WebApp'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: TerraformInstaller@0
+                  inputs:
+                    terraformVersion: $(terraformVersion)
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Init Project 1'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'init'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+                    environmentServiceNameAzureRM: $(azureSubscription)
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Apply Project 1'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'apply'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project1-portfolio-webapp/terraform'
+                    environmentServiceNameAzureRM: $(azureSubscription)
+
+      - deployment: ApplyProject2
+        displayName: 'Deploy Project 2 - Function App'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: TerraformInstaller@0
+                  inputs:
+                    terraformVersion: $(terraformVersion)
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Init Project 2'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'init'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+                    environmentServiceNameAzureRM: $(azureSubscription)
+
+                - task: TerraformTaskV4@4
+                  displayName: 'Apply Project 2'
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'apply'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/project2-function-app/terraform'
+                    environmentServiceNameAzureRM: $(azureSubscription)
