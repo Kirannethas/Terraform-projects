@@ -9,7 +9,7 @@ pool:
 
 variables:
   terraformVersion: '1.5.0'
-  azureSubscription: 'YOUR_AZURE_SERVICE_CONNECTION'  # Update this
+  azureSubscription: 'c9d56db5-24af-4162-b88b-91a1d3604bc9'  # Update this
   resourceGroupLocation: 'East US'
 
 stages:
