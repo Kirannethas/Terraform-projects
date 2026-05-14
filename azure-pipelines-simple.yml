@@ -9,7 +9,7 @@ pool:
 
 variables:
   terraformVersion: '1.5.0'
-  azureSubscription: 'YOUR_AZURE_SERVICE_CONNECTION'  # Update this
+  azureSubscription: 'github.com_Kirannethas'  # Update this
 
 stages:
   # VALIDATE STAGE - Runs on all PRs and pushes
